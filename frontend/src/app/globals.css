@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import "tailwindcss";
+:root { --ink: #0b1224; --navy: #111c38; --violet: #8b5cf6; --paper: #f5f7fb; --muted: #6c7891; --line: #e4e9f2; }
+@theme inline { --font-sans: 'DM Sans', sans-serif; --font-display: 'Space Grotesk', sans-serif; }
+/*
+ * Element defaults belong in the base layer.
+ *
+ * Tailwind v4 puts utilities in a cascade layer, and unlayered CSS beats layered CSS whatever the
+ * specificity. Written outside a layer, `a { color: inherit }` silently overrode `text-white` on
+ * every link, so a primary action rendered near-black on navy - measured at a contrast ratio of
+ * 1.11 against the 4.5 WCAG AA needs. Buttons were unaffected, which is why only links looked wrong.
+ */
+@layer base {
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'DM Sans', sans-serif; }
+  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; }
+  a { color: inherit; text-decoration: none; }
+}
+/* Printing a report (e.g. Save as PDF) prints the report, not the navigation around it. */
+@media print {
+  #app-sidebar, header button[aria-controls="app-sidebar"] { display: none !important; }
+  body { background: #fff; }
+}
+.chart-grid { background-image: linear-gradient(#e9edf5 1px, transparent 1px), linear-gradient(90deg, #e9edf5 1px, transparent 1px); background-size: 100% 25%, 12.5% 100%; }

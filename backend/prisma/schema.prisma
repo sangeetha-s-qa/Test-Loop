@@ -1,0 +1,1623 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+/// How a test run is carried out. AUTOMATED is the original discovery -> AI -> automation -> browser
+/// pipeline; MANUAL is a person executing generated test cases and recording the outcome.
+enum TestingMethod {
+  AUTOMATED
+  MANUAL
+}
+
+enum ApplicationType {
+  ECOMMERCE
+  BANKING_FINTECH
+  HEALTHCARE
+  EDUCATION
+  SOCIAL_MEDIA
+  SAAS
+  BOOKING
+  LOGISTICS
+  REAL_ESTATE
+  ERP
+  CONTENT_MEDIA
+  GAMING
+  ADMIN_PORTAL
+  BUSINESS_CORPORATE
+  OTHER
+}
+
+/// Outcome of a person executing one test case. Separate from TestCaseStatus, which is the review
+/// state of the case itself (draft/approved/rejected) and means something else entirely.
+/// Nothing ever moves a case out of NOT_RUN except a person saying what happened.
+enum ManualTestStatus {
+  NOT_RUN
+  IN_PROGRESS
+  PASSED
+  FAILED
+  BLOCKED
+}
+
+enum ManualBlockedReason {
+  ENVIRONMENT_UNAVAILABLE
+  CREDENTIAL_UNAVAILABLE
+  APPLICATION_UNAVAILABLE
+  TEST_DATA_UNAVAILABLE
+  BROWSER_ISSUE
+  EXTERNAL_DEPENDENCY_UNAVAILABLE
+  OTHER
+}
+
+enum ManualEvidenceKind {
+  SCREENSHOT
+  VIDEO
+}
+
+/// Where a piece of evidence came from. AUTO_ON_FAIL is only ever written when the tester has the
+/// visible "capture when marking Failed" setting switched on for the run.
+enum ManualEvidenceSource {
+  BROWSER_CAPTURE
+  AUTO_ON_FAIL
+  UPLOAD
+}
+
+enum ManualSessionStatus {
+  STARTING
+  ACTIVE
+  /// Closed by the platform or by the tester closing the window.
+  CLOSED
+  /// The browser or page died underneath the session.
+  CRASHED
+  /// The browser could not be launched at all.
+  FAILED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum TestRunStatus {
+  QUEUED
+  RUNNING
+  /// At least one execution in the run is suspended waiting for a person.
+  WAITING_FOR_USER
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// Why a run may legitimately stop and ask a person to act. Mirrors `manualActionReasons` in
+/// `src/automation/program.ts`; the two are kept in step by `manual-action.test.ts`.
+enum ManualActionReason {
+  OTP
+  CAPTCHA
+  EMAIL_VERIFICATION
+  EXTERNAL_AUTH
+  PAYMENT_CONFIRMATION
+  FILE_UPLOAD
+  USER_APPROVAL
+  OTHER
+}
+
+enum ManualActionStatus {
+  PENDING
+  RESOLVED
+  /// Nobody answered before the deadline. Distinct from ABORTED so a report can say which happened.
+  EXPIRED
+  ABORTED
+}
+
+/// The deterministic page analyzers. Each one produces findings that cite a rule or a measured
+/// value, so nothing in an audit is generated text.
+enum AuditAnalyzer {
+  ACCESSIBILITY
+  PERFORMANCE
+  SECURITY
+  API
+}
+
+enum AuditRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// Verdict for one analyzer on one page. ERRORED means the analyzer could not run - distinct from
+/// FAILED, which means it ran and the page did not meet the bar.
+enum AuditPageStatus {
+  PASSED
+  PASSED_WITH_WARNINGS
+  FAILED
+  ERRORED
+}
+
+/// Severity ordering shared by all three analyzers, so one report can rank across them.
+enum AuditImpact {
+  CRITICAL
+  SERIOUS
+  MODERATE
+  MINOR
+  INFO
+}
+
+enum AnnotationShape {
+  RECTANGLE
+  ARROW
+  HIGHLIGHT
+}
+
+/// A closed set rather than a free-form colour, so a stored value can never become styling a
+/// browser has to interpret.
+enum AnnotationColour {
+  ROSE
+  AMBER
+  VIOLET
+  EMERALD
+}
+
+enum MatrixRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DiscoveryStatus {
+  QUEUED
+  DISCOVERING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AIGenerationStatus {
+  QUEUED
+  ANALYZING
+  GENERATING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ScenarioStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+}
+
+enum TestCaseStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+}
+
+enum TestCaseVersionSource {
+  AI
+  USER_EDIT
+}
+
+enum AutomationGenerationStatus {
+  QUEUED
+  GENERATING
+  VALIDATING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AutomationVersionStatus {
+  DRAFT
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum AutomationVersionSource {
+  AI
+  USER_EDIT
+  HEALING
+}
+
+enum AutomationValidationStatus {
+  PASSED
+  PASSED_WITH_WARNINGS
+  FAILED
+}
+
+enum HealingProposalStatus {
+  PROPOSED
+  APPROVED
+  REJECTED
+  SUPERSEDED
+}
+
+enum ExecutionBatchStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// Mirrors the state machine in ARCHITECTURE.md section 12. Terminal states are
+/// PASSED, FAILED, TIMED_OUT, CANCELLED, and ERRORED.
+enum ExecutionStatus {
+  QUEUED
+  PROVISIONING
+  RUNNING
+  /// Suspended mid-run on a `pauseForUser` step. The browser context is still open and the
+  /// execution is NOT eligible for the RUNNING timeout, which a person cannot be held to.
+  WAITING_FOR_USER
+  COLLECTING_ARTIFACTS
+  PASSED
+  FAILED
+  TIMED_OUT
+  CANCELLED
+  ERRORED
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  SKIPPED
+}
+
+enum ArtifactType {
+  SCREENSHOT
+  VIDEO
+  TRACE
+  HAR
+  CONSOLE_LOG
+  NETWORK_LOG
+  VISUAL_DIFF
+  REPORT
+}
+
+/// Distinguishes a real product defect from platform trouble. Only INFRASTRUCTURE failures
+/// are ever retried; retrying an assertion failure would hide a real bug.
+enum FailureCategory {
+  ASSERTION_FAILED
+  LOCATOR_NOT_FOUND
+  LOCATOR_AMBIGUOUS
+  TIMEOUT
+  NAVIGATION_FAILED
+  CONSOLE_ERROR
+  POLICY_VIOLATION
+  INFRASTRUCTURE
+  CANCELLED
+  /// Nobody completed a required manual action before its deadline. Kept out of ASSERTION_FAILED
+  /// on purpose: the application under test was never reached, so this is not evidence about it.
+  MANUAL_ACTION_EXPIRED
+  /// A person explicitly gave up on a required manual action.
+  MANUAL_ACTION_ABORTED
+  UNKNOWN
+}
+
+enum FailureAnalysisStatus {
+  QUEUED
+  ANALYZING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// The QA bug lifecycle. Allowed moves, and who may make them, live in `src/bugs/workflow.ts`:
+///   NEW -> ASSIGNED -> IN_PROGRESS -> FIXED -> READY_FOR_RETEST -> VERIFIED -> CLOSED
+///   READY_FOR_RETEST/VERIFIED/CLOSED -> REOPENED -> ASSIGNED ...
+///   side exits: REJECTED (not a bug), DEFERRED (later), DUPLICATE (of another bug)
+enum BugStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  FIXED
+  READY_FOR_RETEST
+  VERIFIED
+  CLOSED
+  REOPENED
+  REJECTED
+  DEFERRED
+  DUPLICATE
+}
+
+/// Business urgency, set by whoever triages. Independent of severity, which is technical impact:
+/// a typo on the checkout button is LOW severity but can still be P1.
+enum BugPriority {
+  P1
+  P2
+  P3
+  P4
+}
+
+/// Where a bug came from.
+enum BugSource {
+  AUTOMATED
+  MANUAL
+}
+
+/// What a person does in the team, as opposed to their permission role. Used to suggest assignees
+/// and to keep fix verification with QA rather than with the developer who made the fix.
+enum TeamFunction {
+  QA
+  DEVELOPER
+  PRODUCT
+  DESIGN
+  OTHER
+}
+
+enum BugEventType {
+  CREATED
+  STATUS_CHANGED
+  ASSIGNED
+  UNASSIGNED
+  SEVERITY_CHANGED
+  PRIORITY_CHANGED
+  DUE_DATE_CHANGED
+  COMMENTED
+}
+
+enum NotificationType {
+  BUG_ASSIGNED
+  BUG_STATUS_CHANGED
+  BUG_COMMENTED
+  BUG_READY_FOR_RETEST
+  BUG_REOPENED
+}
+
+enum BugSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum VisualComparisonStatus {
+  PENDING
+  MATCHED
+  DIFFERENT
+  NEW_BASELINE_REQUIRED
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String                   @id @default(uuid()) @db.Uuid
+  email        String                   @unique
+  name         String
+  passwordHash String
+  /// Set the first time the person proves they receive mail at `email` by entering an emailed code.
+  emailVerifiedAt   DateTime?
+  /// Sessions issued before this instant are rejected, so a password reset signs out every device.
+  passwordChangedAt DateTime?
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  emailOtps    EmailOtp[]
+  sentInvitations  Invitation[]      @relation("InvitationSender")
+  assignedBugs     Bug[]             @relation("BugAssignee")
+  bugComments      BugComment[]
+  bugEvents        BugEvent[]
+  notifications    Notification[]    @relation("NotificationRecipient")
+  causedNotifications Notification[] @relation("NotificationActor")
+  memberships  OrganizationMembership[]
+  projects     ProjectMembership[]
+  testCaseVersions        TestCaseVersion[]
+  approvedAutomationVersions AutomationVersion[]
+  reviewedHealingProposals   HealingProposal[]
+  executionBatches           ExecutionBatch[]
+  reportedBugs               Bug[]              @relation("BugReporter")
+  approvedBaselineVersions   VisualBaselineVersion[]
+  reviewedVisualComparisons  VisualComparison[]
+  resolvedManualActions      ManualAction[]
+  annotations                Annotation[]
+  createdTestRuns            TestRun[]          @relation("TestRunCreatedBy")
+  completedTestRuns          TestRun[]          @relation("TestRunCompletedBy")
+  executedManualTestCases    TestCase[]         @relation("ManualTestExecutedBy")
+  manualEvidence             ManualEvidence[]
+  manualBrowserSessions      ManualBrowserSession[]
+  manualTestEvents           ManualTestEvent[]
+}
+
+model Organization {
+  id          String                   @id @default(uuid()) @db.Uuid
+  name        String
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+  memberships OrganizationMembership[]
+  projects    Project[]
+  invitations Invitation[]
+  notifications Notification[]
+  @@index([createdAt])
+}
+
+model OrganizationMembership {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  organizationId String           @db.Uuid
+  role           OrganizationRole @default(MEMBER)
+  team           TeamFunction     @default(QA)
+  createdAt      DateTime         @default(now())
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  @@unique([userId, organizationId])
+  @@index([organizationId, role])
+}
+
+model Project {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  name           String
+  description    String              @default("")
+  applicationUrl String
+  /// Extra origins reachable during a run, as a JSON array of origin strings.
+  ///
+  /// Execution is same-origin by default, which is right for an untrusted target but makes a
+  /// performance measurement meaningless: a largest-contentful-paint recorded with the site's CDN
+  /// blocked is not the number a visitor experiences. Allowlisting is explicit, per project, and
+  /// never inferred from the page - otherwise the page under test would choose its own egress rules.
+  /// Every entry still passes the full SSRF check, so a private or metadata address cannot be added.
+  egressAllowlist Json               @default("[]")
+  status         ProjectStatus       @default(ACTIVE)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environments   Environment[]
+  memberships    ProjectMembership[]
+  testRuns       TestRun[]
+  automationScripts AutomationScript[]
+  executions        TestExecution[]
+  bugs              Bug[]
+  visualBaselines   VisualBaseline[]
+  manualActions     ManualAction[]
+  auditRuns         AuditRun[]
+  matrixRuns        MatrixRun[]
+  manualEvidence    ManualEvidence[]
+  manualBrowserSessions ManualBrowserSession[]
+  @@index([organizationId, createdAt])
+  @@index([organizationId, status])
+}
+
+model ProjectMembership {
+  id        String           @id @default(uuid())
+  projectId String           @db.Uuid
+  userId    String           @db.Uuid
+  role      OrganizationRole @default(MEMBER)
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([projectId, userId])
+}
+
+model Environment {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid
+  name      String
+  baseUrl   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([projectId, name])
+  @@index([projectId, createdAt])
+}
+
+model TestRun {
+  id                     String        @id @default(uuid()) @db.Uuid
+  projectId              String        @db.Uuid
+  applicationUrl         String
+  requirements           String        @default("")
+  testingTypes           Json
+  configuration          Json
+  authorizationConfirmed Boolean
+  status                 TestRunStatus @default(QUEUED)
+  testingMethod          TestingMethod @default(AUTOMATED)
+  applicationType        ApplicationType?
+  createdById            String?       @db.Uuid
+  /// Manual runs: set when the first case is executed and when the run is completed. Automated runs
+  /// leave these null.
+  startedAt              DateTime?
+  completedAt            DateTime?
+  completedById          String?       @db.Uuid
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  project                Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy              User?         @relation("TestRunCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  completedBy            User?         @relation("TestRunCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  manualEvidence         ManualEvidence[]
+  manualBrowserSessions  ManualBrowserSession[]
+  manualTestEvents       ManualTestEvent[]
+  bugs                   Bug[]
+  discovery              DiscoveryRun?
+  aiGenerationRuns       AIGenerationRun[]
+  scenarios              TestScenario[]
+  testCases              TestCase[]
+  automationGenerationRuns AutomationGenerationRun[]
+  executionBatches       ExecutionBatch[]
+  executions             TestExecution[]
+  manualActions          ManualAction[]
+  auditRuns              AuditRun[]
+  matrixRuns             MatrixRun[]
+  @@index([projectId, createdAt])
+  @@index([projectId, status])
+  @@index([projectId, testingMethod])
+}
+
+model DiscoveryRun {
+  id                 String          @id @default(uuid()) @db.Uuid
+  testRunId          String          @unique @db.Uuid
+  status             DiscoveryStatus @default(QUEUED)
+  jobId              String          @unique
+  browser            String
+  configuration      Json
+  pagesDiscovered    Int             @default(0)
+  linksDiscovered    Int             @default(0)
+  formsDiscovered    Int             @default(0)
+  elementsDiscovered Int             @default(0)
+  endpointsDiscovered Int            @default(0)
+  startedAt          DateTime?
+  completedAt        DateTime?
+  failureCode        String?
+  failureMessage     String?
+  cancelRequestedAt  DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  testRun            TestRun         @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  endpoints          DiscoveredEndpoint[]
+  pages              DiscoveredPage[]
+  links              DiscoveredLink[]
+  forms              DiscoveredForm[]
+  elements           DiscoveredElement[]
+  @@index([status, createdAt])
+}
+
+model DiscoveredPage {
+  id             String       @id @default(uuid()) @db.Uuid
+  discoveryRunId String       @db.Uuid
+  url            String
+  normalizedUrl  String
+  title          String       @default("")
+  httpStatus     Int?
+  depth          Int
+  parentUrl      String?
+  contentType    String?
+  loadDurationMs Int
+  viewport       Json
+  browser        String
+  textSummary    String       @default("")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  discoveryRun   DiscoveryRun @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  links          DiscoveredLink[]
+  forms          DiscoveredForm[]
+  elements       DiscoveredElement[]
+  scenarios      TestScenario[]
+  testCases      TestCase[]
+  pageAudits     PageAudit[]
+  endpoints      DiscoveredEndpoint[]
+  @@unique([discoveryRunId, normalizedUrl])
+  @@index([normalizedUrl])
+  @@index([discoveryRunId, parentUrl])
+}
+
+model DiscoveredLink {
+  id             String          @id @default(uuid()) @db.Uuid
+  discoveryRunId String          @db.Uuid
+  pageId         String          @db.Uuid
+  href           String
+  normalizedUrl  String?
+  visibleText    String          @default("")
+  sameOrigin     Boolean
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  discoveryRun   DiscoveryRun    @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  page           DiscoveredPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  @@unique([pageId, href])
+  @@index([discoveryRunId, normalizedUrl])
+}
+
+model DiscoveredForm {
+  id             String          @id @default(uuid()) @db.Uuid
+  discoveryRunId String          @db.Uuid
+  pageId         String          @db.Uuid
+  identifier     String          @default("")
+  action         String          @default("")
+  method         String          @default("get")
+  enctype        String          @default("")
+  fieldCount     Int
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  discoveryRun   DiscoveryRun    @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  page           DiscoveredPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  fields         DiscoveredField[]
+  @@index([discoveryRunId])
+}
+
+model DiscoveredField {
+  id                 String          @id @default(uuid()) @db.Uuid
+  formId             String          @db.Uuid
+  name               String          @default("")
+  type               String          @default("")
+  inputMode          String?
+  placeholder        String?
+  label              String?
+  required           Boolean         @default(false)
+  autocomplete       String?
+  selectorCandidates Json
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  form               DiscoveredForm  @relation(fields: [formId], references: [id], onDelete: Cascade)
+  @@index([formId])
+}
+
+model DiscoveredElement {
+  id                 String          @id @default(uuid()) @db.Uuid
+  discoveryRunId     String          @db.Uuid
+  pageId             String          @db.Uuid
+  tagName            String
+  role               String?
+  accessibleName     String?
+  ariaLabel          String?
+  ariaLabelledBy     String?
+  ariaDescribedBy    String?
+  selectorCandidates Json
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  discoveryRun       DiscoveryRun    @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  page               DiscoveredPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  testCases          TestCase[]
+  @@index([discoveryRunId, tagName])
+}
+
+model AIGenerationRun {
+  id            String            @id @default(uuid()) @db.Uuid
+  testRunId     String            @db.Uuid
+  status        AIGenerationStatus @default(QUEUED)
+  provider      String
+  model         String
+  promptVersion String
+  inputSummary  Json
+  scenarioCount Int               @default(0)
+  testCaseCount Int               @default(0)
+  error         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  cancelRequestedAt DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  testRun       TestRun           @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  scenarios     TestScenario[]
+  testCases     TestCase[]
+  @@index([testRunId, createdAt])
+  @@index([testRunId, status])
+}
+
+model TestScenario {
+  id             String            @id @default(uuid()) @db.Uuid
+  testRunId      String            @db.Uuid
+  generationRunId String           @db.Uuid
+  title          String
+  description    String
+  module         String
+  category       String
+  priority       String
+  risk           String
+  sourcePageId   String?           @db.Uuid
+  status         ScenarioStatus    @default(DRAFT)
+  generationMetadata Json
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  testRun        TestRun           @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  generationRun  AIGenerationRun   @relation(fields: [generationRunId], references: [id], onDelete: Cascade)
+  sourcePage     DiscoveredPage?   @relation(fields: [sourcePageId], references: [id], onDelete: SetNull)
+  testCases      TestCase[]
+  executions     TestExecution[]
+  @@index([testRunId, category, status])
+  @@index([sourcePageId])
+}
+
+model TestCase {
+  id             String            @id @default(uuid()) @db.Uuid
+  testRunId      String            @db.Uuid
+  generationRunId String           @db.Uuid
+  scenarioId     String?           @db.Uuid
+  testCaseId     String
+  title          String
+  description    String
+  module         String
+  category       String
+  priority       String
+  severity       String
+  preconditions  String
+  testData       Json
+  steps          Json
+  expectedResult String
+  postconditions String
+  sourcePageId   String?           @db.Uuid
+  sourceElementId String?          @db.Uuid
+  status         TestCaseStatus    @default(DRAFT)
+  generationSource String           @default("AI")
+  modifiedByUser Boolean           @default(false)
+  /// Incremented on every edit; the matching immutable snapshot lives in TestCaseVersion.
+  currentVersion Int               @default(0)
+  /// Manual execution state. The defaults leave every existing automated case at NOT_RUN with no
+  /// notes, which is exactly what it is from a manual-testing point of view.
+  manualStatus   ManualTestStatus  @default(NOT_RUN)
+  actualResult   String            @default("")
+  testerNotes    String            @default("")
+  blockedReason  ManualBlockedReason?
+  executedAt     DateTime?
+  executedById   String?           @db.Uuid
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  testRun        TestRun           @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  executedBy     User?             @relation("ManualTestExecutedBy", fields: [executedById], references: [id], onDelete: SetNull)
+  manualEvidence ManualEvidence[]
+  manualEvents   ManualTestEvent[]
+  generationRun  AIGenerationRun   @relation(fields: [generationRunId], references: [id], onDelete: Cascade)
+  scenario       TestScenario?     @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  sourcePage     DiscoveredPage?   @relation(fields: [sourcePageId], references: [id], onDelete: SetNull)
+  sourceElement  DiscoveredElement? @relation(fields: [sourceElementId], references: [id], onDelete: SetNull)
+  versions       TestCaseVersion[]
+  automation     AutomationScript?
+  executions     TestExecution[]
+  bugs           Bug[]
+  visualBaselines VisualBaseline[]
+  @@unique([testRunId, testCaseId])
+  @@index([testRunId, manualStatus])
+  @@index([testRunId, category, priority, status])
+  @@index([sourcePageId])
+  @@index([sourceElementId])
+}
+
+/// Immutable snapshot of a test case at approval or edit time. Automation is always generated
+/// from one of these rows, never from the mutable TestCase, so an approved script always names
+/// the exact content it was derived from.
+model TestCaseVersion {
+  id             String                @id @default(uuid()) @db.Uuid
+  testCaseId     String                @db.Uuid
+  version        Int
+  title          String
+  description    String
+  module         String
+  category       String
+  priority       String
+  severity       String
+  preconditions  String
+  testData       Json
+  steps          Json
+  expectedResult String
+  postconditions String
+  source         TestCaseVersionSource @default(AI)
+  createdById    String?               @db.Uuid
+  createdAt      DateTime              @default(now())
+  testCase       TestCase              @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  createdBy      User?                 @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  automationVersions AutomationVersion[]
+  @@unique([testCaseId, version])
+  @@index([testCaseId, createdAt])
+}
+
+/// One automation identity per test case. Holds the pointer to the currently approved version;
+/// all content lives in immutable AutomationVersion rows.
+model AutomationScript {
+  id               String              @id @default(uuid()) @db.Uuid
+  testCaseId       String              @unique @db.Uuid
+  projectId        String              @db.Uuid
+  framework        String              @default("playwright")
+  language         String              @default("typescript")
+  approvedVersionId String?            @unique @db.Uuid
+  latestVersion    Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  testCase         TestCase            @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  project          Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  approvedVersion  AutomationVersion?  @relation("ApprovedAutomationVersion", fields: [approvedVersionId], references: [id], onDelete: SetNull)
+  versions         AutomationVersion[] @relation("AutomationScriptVersions")
+  healingProposals HealingProposal[]
+  @@index([projectId, updatedAt])
+}
+
+/// Immutable generated automation. `program` is the validated declarative step program that the
+/// runner executes; `sourceCode` is a rendered Playwright spec kept for human review only.
+model AutomationVersion {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  scriptId           String                     @db.Uuid
+  version            Int
+  testCaseVersionId  String                     @db.Uuid
+  generationRunId    String?                    @db.Uuid
+  program            Json
+  sourceCode         String
+  programSchemaVersion String                   @default("v1")
+  status             AutomationVersionStatus    @default(DRAFT)
+  source             AutomationVersionSource    @default(AI)
+  validationStatus   AutomationValidationStatus
+  validationIssues   Json
+  stepCount          Int                        @default(0)
+  assertionCount     Int                        @default(0)
+  provider           String?
+  model              String?
+  promptVersion      String?
+  latencyMs          Int?
+  promptTokens       Int?
+  completionTokens   Int?
+  /// Set when this version was created by approving a healing proposal.
+  healedFromVersionId String?                   @db.Uuid
+  approvedAt         DateTime?
+  approvedById       String?                    @db.Uuid
+  createdAt          DateTime                   @default(now())
+  script             AutomationScript           @relation("AutomationScriptVersions", fields: [scriptId], references: [id], onDelete: Cascade)
+  approvedForScript  AutomationScript?          @relation("ApprovedAutomationVersion")
+  testCaseVersion    TestCaseVersion            @relation(fields: [testCaseVersionId], references: [id], onDelete: Cascade)
+  generationRun      AutomationGenerationRun?   @relation(fields: [generationRunId], references: [id], onDelete: SetNull)
+  approvedBy         User?                      @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+  healingProposals   HealingProposal[]
+  executions         TestExecution[]
+  @@unique([scriptId, version])
+  @@index([scriptId, status])
+  @@index([generationRunId])
+  @@index([testCaseVersionId])
+}
+
+/// One batch of automation generation for a test run.
+model AutomationGenerationRun {
+  id                String                     @id @default(uuid()) @db.Uuid
+  testRunId         String                     @db.Uuid
+  status            AutomationGenerationStatus @default(QUEUED)
+  provider          String
+  model             String
+  promptVersion     String
+  requestedCount    Int                        @default(0)
+  generatedCount    Int                        @default(0)
+  failedCount       Int                        @default(0)
+  error             String?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelRequestedAt DateTime?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  testRun           TestRun                    @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  versions          AutomationVersion[]
+  @@index([testRunId, createdAt])
+  @@index([testRunId, status])
+}
+
+/// A reviewable proposal to replace one failing locator. Approving it creates a NEW
+/// AutomationVersion; an approved version is never edited in place.
+model HealingProposal {
+  id                 String                @id @default(uuid()) @db.Uuid
+  scriptId           String                @db.Uuid
+  automationVersionId String               @db.Uuid
+  /// The failing step that produced the evidence for this proposal.
+  stepExecutionId    String?               @db.Uuid
+  stepIndex          Int
+  failedLocator      Json
+  proposedLocator    Json
+  candidates         Json
+  confidence         Float
+  rationale          String
+  evidence           Json
+  status             HealingProposalStatus @default(PROPOSED)
+  provider           String?
+  model              String?
+  resultingVersionId String?               @db.Uuid
+  reviewedById       String?               @db.Uuid
+  reviewedAt         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  script             AutomationScript      @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  automationVersion  AutomationVersion     @relation(fields: [automationVersionId], references: [id], onDelete: Cascade)
+  stepExecution      TestStepResult?       @relation(fields: [stepExecutionId], references: [id], onDelete: SetNull)
+  reviewedBy         User?                 @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  @@index([scriptId, status])
+  @@index([automationVersionId])
+}
+
+/// One "execute the approved automation for this test run" request. Holds aggregate counters that
+/// are recomputed from TestExecution rows, never written by hand.
+model ExecutionBatch {
+  id                String               @id @default(uuid()) @db.Uuid
+  testRunId         String               @db.Uuid
+  status            ExecutionBatchStatus @default(QUEUED)
+  browser           String
+  viewport          Json
+  requestedCount    Int                  @default(0)
+  passedCount       Int                  @default(0)
+  failedCount       Int                  @default(0)
+  skippedCount      Int                  @default(0)
+  erroredCount      Int                  @default(0)
+  durationMs        Int?
+  error             String?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelRequestedAt DateTime?
+  createdById       String?              @db.Uuid
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  testRun           TestRun              @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  createdBy         User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  executions        TestExecution[]
+  events            ExecutionEvent[]
+  matrixCell        MatrixCell?
+  @@index([testRunId, createdAt])
+  @@index([testRunId, status])
+}
+
+/// One real browser run of one automation version. A status of PASSED is only ever written by the
+/// runner after the browser actually completed every step without a failure.
+model TestExecution {
+  id                  String            @id @default(uuid()) @db.Uuid
+  batchId             String            @db.Uuid
+  testRunId           String            @db.Uuid
+  projectId           String            @db.Uuid
+  testCaseId          String            @db.Uuid
+  scenarioId          String?           @db.Uuid
+  automationVersionId String            @db.Uuid
+  status              ExecutionStatus   @default(QUEUED)
+  attempt             Int               @default(1)
+  browser             String
+  browserVersion      String?
+  viewport            Json
+  applicationUrl      String
+  totalSteps          Int               @default(0)
+  passedSteps         Int               @default(0)
+  failedStepIndex     Int?
+  failureCategory     FailureCategory?
+  failureMessage      String?
+  consoleErrorCount   Int               @default(0)
+  networkFailureCount Int               @default(0)
+  startedAt           DateTime?
+  completedAt         DateTime?
+  durationMs          Int?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  batch               ExecutionBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  testRun             TestRun           @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  project             Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCase            TestCase          @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  scenario            TestScenario?     @relation(fields: [scenarioId], references: [id], onDelete: SetNull)
+  automationVersion   AutomationVersion @relation(fields: [automationVersionId], references: [id], onDelete: Restrict)
+  steps               TestStepResult[]
+  artifacts           ExecutionArtifact[]
+  events              ExecutionEvent[]
+  failureAnalyses     FailureAnalysis[]
+  manualActions       ManualAction[]
+  bugs                Bug[]
+  visualComparisons   VisualComparison[]
+  @@unique([batchId, testCaseId, attempt])
+  @@index([testRunId, status])
+  @@index([projectId, createdAt])
+  @@index([testCaseId, createdAt])
+  @@index([automationVersionId])
+}
+
+model TestStepResult {
+  id                  String            @id @default(uuid()) @db.Uuid
+  executionId         String            @db.Uuid
+  stepIndex           Int
+  action              String
+  description         String
+  locator             Json?
+  status              StepStatus        @default(PENDING)
+  startedAt           DateTime?
+  completedAt         DateTime?
+  durationMs          Int?
+  failureCategory     FailureCategory?
+  failureMessage      String?
+  /// Page URL at the moment the step ran; evidence for failure analysis.
+  pageUrl             String?
+  /// Serialized DOM neighbourhood of the failed locator, captured only on failure.
+  domEvidence         Json?
+  createdAt           DateTime          @default(now())
+  execution           TestExecution     @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  artifacts           ExecutionArtifact[]
+  healingProposals    HealingProposal[]
+  @@unique([executionId, stepIndex])
+  @@index([executionId, status])
+}
+
+/// A region drawn over a screenshot to mark what is wrong with it.
+///
+/// Stored as a vector in normalised coordinates, never painted into the image. The original
+/// artifact is therefore untouched and still matches its recorded checksum - the "never destroy
+/// evidence" rule is a property of the schema rather than a policy someone has to remember. It also
+/// means a box can be moved or relabelled, and the same screenshot can carry annotations for more
+/// than one bug.
+model Annotation {
+  id           String            @id @default(uuid()) @db.Uuid
+  artifactId   String            @db.Uuid
+  bugId        String?           @db.Uuid
+  shape        AnnotationShape   @default(RECTANGLE)
+  /// Fractions of the image's own width and height, so a box stays correct at any rendered size.
+  x            Float
+  y            Float
+  width        Float
+  height       Float
+  label        String
+  colour       AnnotationColour  @default(ROSE)
+  createdById  String?           @db.Uuid
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  artifact     ExecutionArtifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  bug          Bug?              @relation(fields: [bugId], references: [id], onDelete: SetNull)
+  createdBy    User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  @@index([artifactId, createdAt])
+  @@index([bugId])
+}
+
+/// An HTTP endpoint the application called itself while being crawled.
+///
+/// Inventory, not a test. The crawler observes XHR and fetch traffic the page made on its own; it
+/// never invents a URL and never calls one. What may later be *replayed* is decided by the prober,
+/// not here - see the idempotent-method rule in `audit/api.ts`.
+model DiscoveredEndpoint {
+  id               String          @id @default(uuid()) @db.Uuid
+  discoveryRunId   String          @db.Uuid
+  pageId           String?         @db.Uuid
+  method           String
+  /// A concrete URL actually observed, kept so a probe has something real to replay.
+  url              String
+  /// Origin plus path with the query stripped. Two calls that differ only by a page number are one
+  /// endpoint, so this is what the inventory is keyed and displayed by.
+  normalizedUrl    String
+  resourceType     String
+  observedStatus   Int?
+  contentType      String?
+  observationCount Int             @default(1)
+  createdAt        DateTime        @default(now())
+  discoveryRun     DiscoveryRun    @relation(fields: [discoveryRunId], references: [id], onDelete: Cascade)
+  page             DiscoveredPage? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  @@unique([discoveryRunId, method, normalizedUrl])
+  @@index([discoveryRunId, method])
+  @@index([pageId])
+}
+
+/// Replays the same approved automation across a grid of browsers and viewports.
+///
+/// This engine authors nothing. The programs a person already reviewed and approved are the ones
+/// that run, in every cell, unchanged - which is what makes a difference between two cells evidence
+/// about the *application* rather than about two different tests.
+model MatrixRun {
+  id              String          @id @default(uuid()) @db.Uuid
+  testRunId       String          @db.Uuid
+  projectId       String          @db.Uuid
+  status          MatrixRunStatus @default(QUEUED)
+  /// The cell every other cell is compared against, as "browser:viewport".
+  baselineKey     String
+  cellsRequested  Int             @default(0)
+  cellsCompleted  Int             @default(0)
+  testCaseCount   Int             @default(0)
+  /// Denormalised summary for the list view. The detail view recomputes from the executions
+  /// themselves, which are immutable once terminal, so the two cannot drift.
+  divergenceCount Int             @default(0)
+  error           String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  testRun         TestRun         @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  project         Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cells           MatrixCell[]
+  @@index([testRunId, createdAt])
+  @@index([projectId, status])
+}
+
+/// One coordinate in the grid. Backed by an ordinary ExecutionBatch, so every existing capability -
+/// artifacts, step results, failure analysis, healing - applies to a matrix run without change.
+model MatrixCell {
+  id           String         @id @default(uuid()) @db.Uuid
+  matrixRunId  String         @db.Uuid
+  batchId      String         @unique @db.Uuid
+  browser      String
+  viewportName String
+  viewport     Json
+  createdAt    DateTime       @default(now())
+  matrixRun    MatrixRun      @relation(fields: [matrixRunId], references: [id], onDelete: Cascade)
+  batch        ExecutionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  @@unique([matrixRunId, browser, viewportName])
+  @@index([matrixRunId])
+}
+
+/// One sweep of one test run: a set of analyzers applied across a set of discovered pages.
+model AuditRun {
+  id             String          @id @default(uuid()) @db.Uuid
+  testRunId      String          @db.Uuid
+  projectId      String          @db.Uuid
+  status         AuditRunStatus  @default(QUEUED)
+  jobId          String          @unique
+  /// Which analyzers were asked for, and the thresholds in force. Stored so a later report can say
+  /// what the numbers were compared against rather than re-reading today's configuration.
+  configuration  Json
+  browser        String
+  viewport       Json
+  pagesRequested Int             @default(0)
+  pagesCompleted Int             @default(0)
+  findingCount   Int             @default(0)
+  failedCount    Int             @default(0)
+  error          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  testRun        TestRun         @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pageAudits     PageAudit[]
+  @@index([testRunId, createdAt])
+  @@index([projectId, status])
+}
+
+/// One analyzer's result for one page.
+model PageAudit {
+  id         String          @id @default(uuid()) @db.Uuid
+  auditRunId String          @db.Uuid
+  pageId     String?         @db.Uuid
+  url        String
+  analyzer   AuditAnalyzer
+  status     AuditPageStatus
+  durationMs Int?
+  error      String?
+  createdAt  DateTime        @default(now())
+  auditRun   AuditRun        @relation(fields: [auditRunId], references: [id], onDelete: Cascade)
+  page       DiscoveredPage? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  findings   AuditFinding[]
+  samples    PerformanceSample[]
+  @@unique([auditRunId, url, analyzer])
+  @@index([auditRunId, analyzer, status])
+  @@index([pageId])
+}
+
+/// A single deterministic finding. `ruleId` is the analyzer's own published identifier, which is
+/// what makes a finding checkable by the reader instead of something they have to take on trust.
+model AuditFinding {
+  id          String      @id @default(uuid()) @db.Uuid
+  pageAuditId String      @db.Uuid
+  ruleId      String
+  impact      AuditImpact
+  title       String
+  detail      String
+  /// Selector for the offending element, when the analyzer identified one.
+  selector    String?
+  /// Bounded markup excerpt. Untrusted page content, stored as data and never fed to a model as
+  /// instructions.
+  snippet     String?
+  helpUrl     String?
+  createdAt   DateTime    @default(now())
+  pageAudit   PageAudit   @relation(fields: [pageAuditId], references: [id], onDelete: Cascade)
+  @@index([pageAuditId, impact])
+  @@index([ruleId])
+}
+
+/// One measured metric. Kept as a row rather than a blob so pass/fail stays arithmetic and a trend
+/// across runs is a query rather than a re-parse.
+model PerformanceSample {
+  id          String    @id @default(uuid()) @db.Uuid
+  pageAuditId String    @db.Uuid
+  metric      String
+  value       Float
+  unit        String
+  threshold   Float?
+  passed      Boolean?
+  createdAt   DateTime  @default(now())
+  pageAudit   PageAudit @relation(fields: [pageAuditId], references: [id], onDelete: Cascade)
+  @@unique([pageAuditId, metric])
+  @@index([metric])
+}
+
+/// A suspended execution waiting for a person to do something the platform must not do itself:
+/// receive an OTP, solve a CAPTCHA, confirm a payment.
+///
+/// There is deliberately no column here that could carry what the person typed. They act in their
+/// own browser, so this row records only that an action was required, what it was for, and how it
+/// ended. That makes leaking an OTP through this table impossible rather than merely forbidden.
+model ManualAction {
+  id             String             @id @default(uuid()) @db.Uuid
+  executionId    String             @db.Uuid
+  testRunId      String             @db.Uuid
+  projectId      String             @db.Uuid
+  stepIndex      Int
+  reason         ManualActionReason
+  /// Instruction shown to the person, policy-validated when the automation version was approved.
+  prompt         String
+  status         ManualActionStatus @default(PENDING)
+  /// Where the browser was sitting when it paused. Evidence for the person, not for the report.
+  pageUrl        String?
+  /// Must stay below the target application's own session timeout, or a resumed run finds itself
+  /// logged out and reports that as a defect in the application.
+  deadlineAt     DateTime
+  extensionCount Int                @default(0)
+  resolvedAt     DateTime?
+  resolvedById   String?            @db.Uuid
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  execution      TestExecution      @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  testRun        TestRun            @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  project        Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  resolvedBy     User?              @relation(fields: [resolvedById], references: [id], onDelete: SetNull)
+  /// One pause per step, so a retried poll cannot create a second row for the same wait.
+  @@unique([executionId, stepIndex])
+  @@index([projectId, status])
+  @@index([testRunId, status])
+  @@index([status, deadlineAt])
+}
+
+/// Metadata for a stored artifact. Bytes live in object storage, never in PostgreSQL.
+/// `storageKey` is generated server-side and is never accepted from a client.
+model ExecutionArtifact {
+  id             String          @id @default(uuid()) @db.Uuid
+  executionId    String          @db.Uuid
+  stepResultId   String?         @db.Uuid
+  type           ArtifactType
+  storageKey     String          @unique
+  fileName       String
+  contentType    String
+  byteSize       Int
+  checksumSha256 String
+  expiresAt      DateTime?
+  createdAt      DateTime        @default(now())
+  execution      TestExecution   @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  stepResult     TestStepResult? @relation(fields: [stepResultId], references: [id], onDelete: SetNull)
+  visualBaselineVersions      VisualBaselineVersion[]
+  visualComparisonsAsBaseline VisualComparison[] @relation("VisualComparisonBaseline")
+  visualComparisonsAsCurrent  VisualComparison[] @relation("VisualComparisonCurrent")
+  visualComparisonsAsDiff     VisualComparison[] @relation("VisualComparisonDiff")
+  annotations    Annotation[]
+  @@index([executionId, type])
+}
+
+/// Durable progress events. Clients replay from a cursor after reconnecting, so a dropped
+/// SSE connection never loses progress.
+model ExecutionEvent {
+  id          String         @id @default(uuid()) @db.Uuid
+  batchId     String         @db.Uuid
+  executionId String?        @db.Uuid
+  sequence    Int
+  type        String
+  payload     Json
+  createdAt   DateTime       @default(now())
+  batch       ExecutionBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  execution   TestExecution? @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  @@unique([batchId, sequence])
+  @@index([batchId, sequence])
+}
+
+/// AI reading of one failed execution. Immutable and versioned: a re-analysis creates a new row
+/// so an earlier diagnosis is never silently rewritten. Analysis never mutates a test or a bug.
+model FailureAnalysis {
+  id                String                @id @default(uuid()) @db.Uuid
+  executionId       String                @db.Uuid
+  version           Int
+  status            FailureAnalysisStatus @default(QUEUED)
+  provider          String
+  model             String
+  promptVersion     String
+  /// Model-reported category, kept separate from the FailureCategory the runner recorded, so an
+  /// AI opinion can never overwrite the observed machine fact.
+  category          String?
+  likelyCause       String?
+  recommendedAction String?
+  summary           String?
+  confidence        Float?
+  /// Ids of the step results and artifacts the analysis was given.
+  evidenceRefs      Json
+  rawOutput         Json?
+  error             String?
+  latencyMs         Int?
+  promptTokens      Int?
+  completionTokens  Int?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  cancelRequestedAt DateTime?
+  createdAt         DateTime              @default(now())
+  execution         TestExecution         @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  bugs              Bug[]
+  @@unique([executionId, version])
+  @@index([executionId, status])
+}
+
+/// A reviewable defect. `fingerprint` makes creation idempotent: the same failure signature in
+/// the same project resolves to the existing bug instead of creating a duplicate.
+model Bug {
+  id               String           @id @default(uuid()) @db.Uuid
+  projectId        String           @db.Uuid
+  testCaseId       String?          @db.Uuid
+  executionId      String?          @db.Uuid
+  analysisId       String?          @db.Uuid
+  reference        String
+  title            String
+  description      String
+  stepsToReproduce Json
+  expectedBehavior String
+  actualBehavior   String
+  severity         BugSeverity      @default(MEDIUM)
+  priority         BugPriority      @default(P3)
+  status           BugStatus        @default(NEW)
+  source           BugSource        @default(AUTOMATED)
+  /// The manual run a manual bug was raised from; automated bugs reach their run via the execution.
+  testRunId        String?          @db.Uuid
+  assigneeId       String?          @db.Uuid
+  dueAt            DateTime?
+  /// What the developer changed, required to mark FIXED; shown to QA when retesting.
+  resolution       String?
+  fixedAt          DateTime?
+  verifiedAt       DateTime?
+  closedAt         DateTime?
+  reopenCount      Int              @default(0)
+  fingerprint      String
+  duplicateOfId    String?          @db.Uuid
+  reportedById     String?          @db.Uuid
+  occurrenceCount  Int              @default(1)
+  lastSeenAt       DateTime         @default(now())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCase         TestCase?        @relation(fields: [testCaseId], references: [id], onDelete: SetNull)
+  execution        TestExecution?   @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  analysis         FailureAnalysis? @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  reportedBy       User?            @relation("BugReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+  duplicateOf      Bug?             @relation("BugDuplicates", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates       Bug[]            @relation("BugDuplicates")
+  annotations       Annotation[]
+  assignee         User?            @relation("BugAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  testRun          TestRun?         @relation(fields: [testRunId], references: [id], onDelete: SetNull)
+  comments         BugComment[]
+  events           BugEvent[]
+  notifications    Notification[]
+  @@unique([projectId, fingerprint])
+  @@unique([projectId, reference])
+  @@index([projectId, status, severity])
+  @@index([assigneeId, status])
+  @@index([testCaseId])
+}
+
+/// Baseline identity, scoped exactly as ARCHITECTURE.md section 15 requires. The approved
+/// version pointer is the only mutable field; image history lives in immutable version rows.
+model VisualBaseline {
+  id                String                  @id @default(uuid()) @db.Uuid
+  projectId         String                  @db.Uuid
+  testCaseId        String                  @db.Uuid
+  name              String
+  browser           String
+  viewportWidth     Int
+  viewportHeight    Int
+  deviceScaleFactor Float                   @default(1)
+  environment       String                  @default("default")
+  approvedVersionId String?                 @unique @db.Uuid
+  latestVersion     Int                     @default(0)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCase          TestCase                @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  approvedVersion   VisualBaselineVersion?  @relation("ApprovedBaselineVersion", fields: [approvedVersionId], references: [id], onDelete: SetNull)
+  versions          VisualBaselineVersion[] @relation("BaselineVersions")
+  comparisons       VisualComparison[]
+  @@unique([testCaseId, name, browser, viewportWidth, viewportHeight, deviceScaleFactor, environment])
+  @@index([projectId, updatedAt])
+}
+
+/// Immutable approved baseline image. Approving creates a new row; nothing is ever overwritten.
+model VisualBaselineVersion {
+  id           String             @id @default(uuid()) @db.Uuid
+  baselineId   String             @db.Uuid
+  version      Int
+  artifactId   String             @db.Uuid
+  /// Rectangles excluded from comparison, for clocks, ads, and other non-deterministic regions.
+  masks        Json
+  approvedById String?            @db.Uuid
+  approvedAt   DateTime           @default(now())
+  createdAt    DateTime           @default(now())
+  baseline     VisualBaseline     @relation("BaselineVersions", fields: [baselineId], references: [id], onDelete: Cascade)
+  approvedFor  VisualBaseline?    @relation("ApprovedBaselineVersion")
+  artifact     ExecutionArtifact  @relation(fields: [artifactId], references: [id], onDelete: Restrict)
+  approvedBy   User?              @relation(fields: [approvedById], references: [id], onDelete: SetNull)
+  comparisons  VisualComparison[]
+  @@unique([baselineId, version])
+}
+
+/// One baseline-versus-current comparison. Never auto-approves: a DIFFERENT result stays
+/// DIFFERENT until a person acts on it.
+model VisualComparison {
+  id                 String                 @id @default(uuid()) @db.Uuid
+  executionId        String                 @db.Uuid
+  baselineId         String                 @db.Uuid
+  baselineVersionId  String?                @db.Uuid
+  baselineArtifactId String?                @db.Uuid
+  currentArtifactId  String                 @db.Uuid
+  diffArtifactId     String?                @db.Uuid
+  status             VisualComparisonStatus @default(PENDING)
+  algorithm          String                 @default("pixelmatch")
+  threshold          Float
+  diffPixelCount     Int?
+  totalPixelCount    Int?
+  diffRatio          Float?
+  dimensionsMatch    Boolean                @default(true)
+  masks              Json
+  reviewedById       String?                @db.Uuid
+  reviewedAt         DateTime?
+  createdAt          DateTime               @default(now())
+  execution          TestExecution          @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  baseline           VisualBaseline         @relation(fields: [baselineId], references: [id], onDelete: Cascade)
+  baselineVersion    VisualBaselineVersion? @relation(fields: [baselineVersionId], references: [id], onDelete: SetNull)
+  baselineArtifact   ExecutionArtifact?     @relation("VisualComparisonBaseline", fields: [baselineArtifactId], references: [id], onDelete: SetNull)
+  currentArtifact    ExecutionArtifact      @relation("VisualComparisonCurrent", fields: [currentArtifactId], references: [id], onDelete: Cascade)
+  diffArtifact       ExecutionArtifact?     @relation("VisualComparisonDiff", fields: [diffArtifactId], references: [id], onDelete: SetNull)
+  reviewedBy         User?                  @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  @@index([executionId])
+  @@index([baselineId, createdAt])
+  @@index([status, createdAt])
+}
+
+
+/// A screenshot or video a tester attached as evidence for one manual test case.
+///
+/// Bytes live in the same private artifact store as execution artifacts, under a key generated
+/// server-side from tenant-owned ids. ExecutionArtifact cannot hold these: it requires an automation
+/// execution, and a manual case has none. A null `testCaseId` is reference material for the run.
+model ManualEvidence {
+  id             String               @id @default(uuid()) @db.Uuid
+  testRunId      String               @db.Uuid
+  projectId      String               @db.Uuid
+  testCaseId     String?              @db.Uuid
+  kind           ManualEvidenceKind   @default(SCREENSHOT)
+  source         ManualEvidenceSource
+  storageKey     String               @unique
+  fileName       String
+  contentType    String
+  byteSize       Int
+  checksumSha256 String
+  /// Page the controlled browser was showing, for browser captures only.
+  pageUrl        String?
+  uploadedById   String?              @db.Uuid
+  createdAt      DateTime             @default(now())
+  testRun        TestRun              @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  project        Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  testCase       TestCase?            @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  uploadedBy     User?                @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  @@index([testRunId, testCaseId, createdAt])
+  @@index([projectId, createdAt])
+}
+
+/// A real browser window opened on the control-plane host for a person to test in.
+///
+/// The live Playwright handle exists only in the process that launched it; this row is the durable
+/// record, so a restart can never leave the UI claiming a window is open that is not.
+model ManualBrowserSession {
+  id             String              @id @default(uuid()) @db.Uuid
+  testRunId      String              @db.Uuid
+  projectId      String              @db.Uuid
+  startedById    String?             @db.Uuid
+  browser        String
+  targetUrl      String
+  status         ManualSessionStatus @default(STARTING)
+  /// Last error worth showing the tester (navigation failure, crash). Never contains page content.
+  lastError      String?
+  endReason      String?
+  startedAt      DateTime            @default(now())
+  lastActivityAt DateTime            @default(now())
+  endedAt        DateTime?
+  testRun        TestRun             @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  project        Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startedBy      User?               @relation(fields: [startedById], references: [id], onDelete: SetNull)
+  @@index([testRunId, status])
+  @@index([status])
+}
+
+/// Append-only timeline of a manual run: status changes, evidence, session, and completion events.
+/// The report's execution timeline is read from here, never reconstructed from current state.
+model ManualTestEvent {
+  id         String            @id @default(uuid()) @db.Uuid
+  testRunId  String            @db.Uuid
+  testCaseId String?           @db.Uuid
+  userId     String?           @db.Uuid
+  type       String
+  fromStatus ManualTestStatus?
+  toStatus   ManualTestStatus?
+  detail     Json              @default("{}")
+  createdAt  DateTime          @default(now())
+  testRun    TestRun           @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+  testCase   TestCase?         @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  user       User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([testRunId, createdAt])
+  @@index([testCaseId, createdAt])
+}
+
+enum EmailOtpPurpose {
+  SIGNUP_VERIFICATION
+  SIGN_IN
+  PASSWORD_RESET
+}
+
+/// One emailed one-time code. The code itself is never stored: only an HMAC of it, so a database
+/// read cannot be turned into a sign-in. The row id is the opaque "challenge" the client echoes back
+/// with the code, which ties a code to the exact request that asked for it.
+model EmailOtp {
+  id         String          @id @default(uuid()) @db.Uuid
+  userId     String          @db.Uuid
+  purpose    EmailOtpPurpose
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int             @default(0)
+  /// Set when the code is used successfully, superseded by a resend, or locked by too many attempts.
+  consumedAt DateTime?
+  createdAt  DateTime        @default(now())
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, purpose, createdAt])
+  @@index([expiresAt])
+}
+
+/// A one-time link that lets someone join a workspace with a given role and team. Only a hash of
+/// the token is stored; the link itself is shown once, to the person who created it.
+model Invitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  email          String
+  role           OrganizationRole @default(MEMBER)
+  team           TeamFunction     @default(DEVELOPER)
+  tokenHash      String           @unique
+  invitedById    String?          @db.Uuid
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy      User?            @relation("InvitationSender", fields: [invitedById], references: [id], onDelete: SetNull)
+  @@index([organizationId, createdAt])
+  @@index([email])
+}
+
+model BugComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  bugId     String   @db.Uuid
+  authorId  String?  @db.Uuid
+  body      String
+  createdAt DateTime @default(now())
+  bug       Bug      @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  @@index([bugId, createdAt])
+}
+
+/// Append-only history of a bug: every status move, assignment, and triage change, with who did it.
+model BugEvent {
+  id        String       @id @default(uuid()) @db.Uuid
+  bugId     String       @db.Uuid
+  actorId   String?      @db.Uuid
+  type      BugEventType
+  fromValue String?
+  toValue   String?
+  note      String?
+  createdAt DateTime     @default(now())
+  bug       Bug          @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  actor     User?        @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([bugId, createdAt])
+}
+
+/// In-app notification. Never sent anywhere; read from the bell in the header.
+model Notification {
+  id             String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  organizationId String           @db.Uuid
+  actorId        String?          @db.Uuid
+  type           NotificationType
+  bugId          String?          @db.Uuid
+  title          String
+  body           String           @default("")
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+  user           User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor          User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bug            Bug?             @relation(fields: [bugId], references: [id], onDelete: Cascade)
+  @@index([userId, organizationId, readAt, createdAt])
+}

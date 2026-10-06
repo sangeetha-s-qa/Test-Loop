@@ -1,0 +1,22 @@
+{
+  "name": "testloop",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm --prefix frontend run dev\" \"npm --prefix backend run dev\"",
+    "build": "npm --prefix frontend run build && npm --prefix backend run build",
+    "lint": "npm --prefix frontend run lint && npm --prefix backend run lint",
+    "typecheck": "npm --prefix frontend run typecheck && npm --prefix backend run typecheck",
+    "test": "npm --prefix backend run test",
+    "test:integration": "npm --prefix backend run test:integration",
+    "workers": "npm --prefix backend run workers",
+    "fixture": "npm --prefix backend run fixture",
+    "db:migrate": "npm --prefix backend run db:migrate",
+    "db:status": "npm --prefix backend run db:status",
+    "db:validate": "npm --prefix backend run db:validate",
+    "db:generate": "npm --prefix backend run db:generate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "prettier": "^3.5.3"
+  }
+}
