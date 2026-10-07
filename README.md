@@ -64,6 +64,18 @@ The rules live in `backend/src/bugs/workflow.ts`. Developers work only the bugs 
 priority, due date), assign, verify, and close. Whoever was assigned a fix can never verify it.
 Assignments, retests, reopenings, and comments raise in-app notifications (the bell in the header).
 
+Bugs have three views (**List · Board · Tracking**):
+
+- **Board** (`/bugs/board`) - Kanban columns New, Assigned, In progress, Fixed, Ready for retest, Done
+  (and Parked on request). Drag a card to move it; only columns the viewer may legally move to light
+  up, and moves that need input (assignee, fix description, reason) open a dialog. Every card also
+  has a keyboard **Move** menu. Optional swimlanes per assignee; refreshes every 20 seconds.
+- **Tracking** (`/bugs/tracking`) - open, P1, critical, overdue, and unassigned counts; median time
+  to fix and to retest; reopen rate; raised vs resolved per day; open bugs by age; workload per
+  person by priority; bugs by status and severity; overdue and oldest-open lists. Every chart has
+  a table view. Metrics are computed in `backend/src/bugs/metrics.ts` from stored bugs and their
+  history.
+
 ## Prerequisites
 
 | Dependency | Version | Purpose |

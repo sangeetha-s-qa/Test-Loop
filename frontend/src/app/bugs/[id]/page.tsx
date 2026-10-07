@@ -6,6 +6,7 @@ import { ArrowLeft, Check, Copy, MessageSquare, Send } from "lucide-react";
 import { ArtifactGrid } from "@/components/artifact-viewer";
 import { Avatar, BugStatusBadge, PriorityBadge, SeverityBadge } from "@/components/bugs/badges";
 import { AssigneeSelect } from "@/components/bugs/raise-bug-dialog";
+import { transitionNeeds } from "@/components/bugs/transition-dialog";
 import { EvidenceThumb, Lightbox } from "@/components/manual/shared";
 import { Shell } from "@/components/shell";
 import { ErrorState, LoadingState } from "@/components/states";
@@ -17,8 +18,8 @@ import { useResource } from "@/lib/use-resource";
 /** The happy path, drawn as a stepper. Side states (rejected, deferred, duplicate) are shown as a badge instead. */
 const mainPath: BugStatus[] = ["NEW", "ASSIGNED", "IN_PROGRESS", "FIXED", "READY_FOR_RETEST", "VERIFIED", "CLOSED"];
 
-/** Moves that ask for something before they can be made. */
-const needs: Partial<Record<BugStatus, "assignee" | "resolution" | "reason" | "duplicate">> = { ASSIGNED: "assignee", FIXED: "resolution", REJECTED: "reason", DEFERRED: "reason", REOPENED: "reason", DUPLICATE: "duplicate" };
+/** Moves that ask for something before they can be made - shared with the board. */
+const needs = transitionNeeds;
 
 const field = "mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-violet-500";
 

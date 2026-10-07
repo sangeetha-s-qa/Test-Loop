@@ -24,6 +24,7 @@ import { auditRouter } from "./audit/routes";
 import { matrixRouter } from "./matrix/routes";
 import { authRouter } from "./auth/routes";
 import { bugsRouter } from "./bugs/routes";
+import { trackingRouter } from "./bugs/tracking";
 import { teamRouter } from "./team/routes";
 import { manualRouter } from "./manual/routes";
 import { closeAllSessions, reconcileOrphanedSessions } from "./manual/browser-session";
@@ -91,6 +92,8 @@ app.use("/api/v1", reportingRouter);
 app.use("/api/v1", auditRouter);
 app.use("/api/v1", matrixRouter);
 app.use("/api/v1", manualRouter);
+// The board and metrics routes must precede the bugs router, whose /bugs/:id would claim /bugs/board.
+app.use("/api/v1", trackingRouter);
 app.use("/api/v1", bugsRouter);
 app.use("/api/v1", teamRouter);
 

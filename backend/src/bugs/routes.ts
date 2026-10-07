@@ -1,11 +1,12 @@
 import { Router, type Response } from "express";
-import type { BugStatus, Prisma } from "@prisma/client";
+import type { BugStatus } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../db";
 import { fail, notFound, route, registerUuidParams } from "../http";
 import { requireAuth, type AuthRequest } from "../middleware/auth";
 import { duplicateCandidates } from "../analysis/bugs";
 import { BugActionError, assignBug, commentOnBug, loadBug, raiseManualBug, transitionBug, updateTriage } from "./service";
+import { bugFilterSchema, bugWhere, priorities, severities } from "./filters";
 import { allowedTransitions, bugStatuses, doneStatuses } from "./workflow";
 
 export const bugsRouter = Router();
@@ -19,42 +20,15 @@ const handled = (response: Response, error: unknown) => {
   throw error;
 };
 
-const severities = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
-const priorities = ["P1", "P2", "P3", "P4"] as const;
 const person = { select: { id: true, name: true, email: true } } as const;
 
 /* ------------------------------------------------------------------------------------------------
  * List
  * ---------------------------------------------------------------------------------------------- */
 
-const listSchema = z.object({
-  status: z.union([z.enum(bugStatuses), z.literal("OPEN"), z.literal("DONE"), z.literal("ALL")]).default("ALL"),
-  severity: z.enum([...severities, "ALL"]).default("ALL"),
-  priority: z.enum([...priorities, "ALL"]).default("ALL"),
-  /** A user id, "me", "unassigned", or "ALL". */
-  assignee: z.string().max(40).default("ALL"),
-  source: z.enum(["AUTOMATED", "MANUAL", "ALL"]).default("ALL"),
-  projectId: z.string().uuid().optional(),
-  q: z.string().trim().max(200).optional(),
-});
-
 /** GET /api/v1/bugs — the organization's bugs, filterable by status group, triage, assignee, and source. */
 bugsRouter.get("/bugs", requireAuth, route(async (request, response) => {
-  const filters = listSchema.parse(request.query);
-  const user = request.user!;
-  const where: Prisma.BugWhereInput = { project: { organizationId: user.organizationId } };
-  if (filters.status === "OPEN") where.status = { notIn: [...doneStatuses] };
-  else if (filters.status === "DONE") where.status = { in: [...doneStatuses] };
-  else if (filters.status !== "ALL") where.status = filters.status;
-  if (filters.severity !== "ALL") where.severity = filters.severity;
-  if (filters.priority !== "ALL") where.priority = filters.priority;
-  if (filters.source !== "ALL") where.source = filters.source;
-  if (filters.projectId) where.projectId = filters.projectId;
-  if (filters.assignee === "me") where.assigneeId = user.id;
-  else if (filters.assignee === "unassigned") where.assigneeId = null;
-  else if (filters.assignee !== "ALL") where.assigneeId = z.string().uuid().parse(filters.assignee);
-  if (filters.q) where.OR = [{ title: { contains: filters.q, mode: "insensitive" } }, { reference: { contains: filters.q, mode: "insensitive" } }];
-
+  const where = bugWhere(bugFilterSchema.parse(request.query), request.user!);
   const bugs = await prisma.bug.findMany({
     where,
     select: {

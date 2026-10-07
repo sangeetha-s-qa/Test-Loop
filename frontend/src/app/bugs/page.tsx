@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CalendarClock, Download, MessageSquare, Search } from "lucide-react";
 import { Avatar, BugStatusBadge, PriorityBadge, SeverityBadge } from "@/components/bugs/badges";
+import { BugViewsNav } from "@/components/bugs/transition-dialog";
 import { Shell } from "@/components/shell";
 import { EmptyState, ErrorState, LoadingState } from "@/components/states";
 import { API_URL, api, type Project } from "@/lib/api";
@@ -49,11 +50,14 @@ export default function BugsPage() {
       title="Bugs"
       subtitle="Triage, assign, fix, retest, and close"
       actions={
-        filters.projectId ? (
-          <a href={`${API_URL}/api/v1/projects/${filters.projectId}/bugs/export`} className="hidden items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 sm:flex">
-            <Download size={15} /> Export CSV
-          </a>
-        ) : null
+        <div className="flex items-center gap-2">
+          {filters.projectId && (
+            <a href={`${API_URL}/api/v1/projects/${filters.projectId}/bugs/export`} className="hidden items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 sm:flex">
+              <Download size={15} /> Export CSV
+            </a>
+          )}
+          <BugViewsNav current="list" />
+        </div>
       }
     >
       <nav className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-200" aria-label="Bug views">
